@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagrama de la Espiral de Fibonacci - Lateralus</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #1a1a1a; /* Gris oscuro de Tool como fallback */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #fibonacci-spiral {
+            border: 1px solid #333;
+        }
+        .tooltip {
+            position: absolute;
+            background: rgba(26, 26, 26, 0.9); /* Gris oscuro translúcido */
+            color: #ff6600; /* Naranja de Tool */
+            padding: 5px;
+            border-radius: 3px;
+            font-size: 12px;
+            pointer-events: none;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="fibonacci-spiral" width="600" height="600"></canvas>
+    <div id="tooltip" class="tooltip"></div>
+
+    <script>
+        // Configuración del canvas
+        const canvas = document.getElementById('fibonacci-spiral');
+        const ctx = canvas.getContext('2d');
+        const tooltip = document.getElementById('tooltip');
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+
+        // Cargar imagen de fondo
+        const backgroundImage = new Image();
+        backgroundImage.src = 'https://imgur.com/frlq8we.jpg'; // URL directa de la imagen
+        backgroundImage.onload = () => animate(); // Inicia la animación cuando la imagen cargue
+
+        // Secuencia de Fibonacci
+        const fib = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
+        const scale = 15;
+
+        // Marcadores con sílabas
+        const markers = [
+            { time: '1:37', sec: 97, fibIndex: 0, label: 'Black', syllables: 1, hue: 0 },
+            { time: '1:37.5', sec: 97.5, fibIndex: 1, label: 'then', syllables: 1, hue: 10 },
+            { time: '1:38', sec: 98, fibIndex: 2, label: 'white are', syllables: 2, hue: 20 },
+            { time: '1:39.5', sec: 99.5, fibIndex: 3, label: 'all I see', syllables: 3, hue: 30 },
+            { time: '1:42', sec: 102, fibIndex: 4, label: 'in my infancy', syllables: 5, hue: 40 },
+            { time: '1:50', sec: 110, fibIndex: 5, label: 'red and yellow...', syllables: 8, hue: 50 }
+        ];
+
+        // Variables para la animación
+        let intensity = 0.5;
+        let angleOffset = 0;
+
+        // Dibujar imagen de fondo y overlay
+        function drawBackground() {
+            ctx.globalAlpha = 0.5; // Opacidad reducida para que la imagen no opaque los elementos
+            ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+            ctx.globalAlpha = 1.0; // Restaurar opacidad
+
+            // Overlay para contraste
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Dibujar cuadrados de Fibonacci
+        function drawSquares() {
+            let x = centerX;
+            let y = centerY;
+            let direction = 0;
+
+            ctx.lineWidth = 2 + intensity * 2;
+            for (let i = 0; i < fib.length; i++) {
+                const size = fib[i] * scale;
+                ctx.beginPath();
+                ctx.strokeStyle = `hsl(${350 + i * 5}, 80%, ${40 + intensity * 20}%)`;
+                if (direction === 0) {
+                    ctx.rect(x, y - size, size, size);
+                    x += size;
+                } else if (direction === 1) {
+                    ctx.rect(x - size, y - size, size, size);
+                    y -= size;
+                } else if (direction === 2) {
+                    ctx.rect(x - size, y, size, size);
+                    x -= size;
+                } else {
+                    ctx.rect(x, y, size, size);
+                    y += size;
+                }
+                ctx.stroke();
+                direction = (direction + 1) % 4;
+            }
+        }
+
+        // Dibujar la espiral áurea
+        function drawSpiral() {
+            ctx.beginPath();
+            ctx.strokeStyle = `hsl(${20 + intensity * 20}, 100%, ${50 + intensity * 20}%)`;
+            ctx.lineWidth = 1 + intensity * 2;
+            for (let t = 0; t < 5 * Math.PI; t += 0.02) {
+                const radius = scale * Math.pow(1.618, t / Math.PI) * 1.5;
+                const px = centerX + radius * Math.cos(t + angleOffset);
+                const py = centerY + radius * Math.sin(t + angleOffset);
+                if (t === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.stroke();
+        }
+
+        // Dibujar marcadores con sílabas
+        function drawMarkers() {
+            markers.forEach(marker => {
+                const radius = fib[marker.fibIndex] * scale * 0.8;
+                const angle = (marker.fibIndex * Math.PI / 2) + Math.PI / 4 + angleOffset;
+                const mx = centerX + radius * Math.cos(angle);
+                const my = centerY + radius * Math.sin(angle);
+
+                ctx.beginPath();
+                ctx.arc(mx, my, 5 + intensity * 2, 0, Math.PI * 2);
+                ctx.fillStyle = `hsl(${marker.hue}, 90%, ${50 + intensity * 20}%)`;
+                ctx.fill();
+
+                ctx.fillStyle = '#ff6600';
+                ctx.font = '11px Arial';
+                ctx.textAlign = 'left';
+                ctx.fillText(`${marker.syllables} - ${marker.label}`, mx + 8, my + 3);
+
+                canvas.dataset[`marker-${marker.time}`] = { x: mx, y: my, text: `${marker.syllables} - ${marker.label}` };
+            });
+        }
+
+        // Animación
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBackground();
+            intensity = 0.5 + 0.3 * Math.sin(Date.now() / 1000);
+            angleOffset += 0.005;
+
+            drawSquares();
+            drawSpiral();
+            drawMarkers();
+
+            requestAnimationFrame(animate);
+        }
+
+        // Interactividad con tooltips
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            let found = false;
+            markers.forEach(marker => {
+                const radius = fib[marker.fibIndex] * scale * 0.8;
+                const angle = (marker.fibIndex * Math.PI / 2) + Math.PI / 4 + angleOffset;
+                const mx = centerX + radius * Math.cos(angle);
+                const my = centerY + radius * Math.sin(angle);
+
+                if (Math.hypot(mouseX - mx, mouseY - my) < 10) {
+                    tooltip.style.left = `${e.clientX + 10}px`;
+                    tooltip.style.top = `${e.clientY + 10}px`;
+                    tooltip.textContent = `${marker.syllables} - ${marker.label}`;
+                    tooltip.style.display = 'block';
+                    found = true;
+                }
+            });
+            if (!found) tooltip.style.display = 'none';
+        });
+    </script>
+</body>
+</html>
